@@ -3,8 +3,9 @@ name = "saturn-sdk"
 version = "0.0.1"
 description = ""
 authors = ["Aurelio <hello@aurelio.ai>"]
-license = "MIT"
+license = "LICENSE"
 readme = "README.md"
+packages = [{include = "saturn_sdk"}]
 
 [tool.poetry.dependencies]
 python = "^3.9"
