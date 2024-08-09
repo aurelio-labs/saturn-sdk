@@ -15,12 +15,9 @@ The REST API documentation can be found on [docs.saturn-sdk.com](https://docs.sa
 ## Installation
 
 ```sh
-# install from the production repo
-pip install git+ssh://git@github.com/aurelio-labs/saturn-sdk.git
+# install from PyPI
+pip install --pre saturn_sdk
 ```
-
-> [!NOTE]
-> Once this package is [published to PyPI](https://app.stainlessapi.com/docs/guides/publish), this will become: `pip install --pre saturn_sdk`
 
 ## Usage
 
