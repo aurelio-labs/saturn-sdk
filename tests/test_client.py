@@ -10,6 +10,7 @@ import inspect
 import tracemalloc
 from typing import Any, Union, cast
 from unittest import mock
+from typing_extensions import Literal
 
 import httpx
 import pytest
@@ -17,6 +18,7 @@ from respx import MockRouter
 from pydantic import ValidationError
 
 from saturn_sdk import SaturnSDK, AsyncSaturnSDK, APIResponseValidationError
+from saturn_sdk._types import Omit
 from saturn_sdk._models import BaseModel, FinalRequestOptions
 from saturn_sdk._constants import RAW_RESPONSE_HEADER
 from saturn_sdk._exceptions import APIStatusError, APITimeoutError, APIResponseValidationError
@@ -651,6 +653,7 @@ class TestSaturnSDK:
             [3, "", 0.5],
             [2, "", 0.5 * 2.0],
             [1, "", 0.5 * 4.0],
+            [-1100, "", 8],  # test large number potentially overflowing
         ],
     )
     @mock.patch("time.time", mock.MagicMock(return_value=1696004797))
@@ -695,7 +698,40 @@ class TestSaturnSDK:
     @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
     @mock.patch("saturn_sdk._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
-    def test_retries_taken(self, client: SaturnSDK, failures_before_success: int, respx_mock: MockRouter) -> None:
+    @pytest.mark.parametrize("failure_mode", ["status", "exception"])
+    def test_retries_taken(
+        self,
+        client: SaturnSDK,
+        failures_before_success: int,
+        failure_mode: Literal["status", "exception"],
+        respx_mock: MockRouter,
+    ) -> None:
+        client = client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                if failure_mode == "exception":
+                    raise RuntimeError("oops")
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/v1/ingest/document").mock(side_effect=retry_handler)
+
+        response = client.ingest.document.with_raw_response.process(file=b"raw file contents")
+
+        assert response.retries_taken == failures_before_success
+        assert int(response.http_request.headers.get("x-stainless-retry-count")) == failures_before_success
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("saturn_sdk._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    def test_omit_retry_count_header(
+        self, client: SaturnSDK, failures_before_success: int, respx_mock: MockRouter
+    ) -> None:
         client = client.with_options(max_retries=4)
 
         nb_retries = 0
@@ -709,9 +745,36 @@ class TestSaturnSDK:
 
         respx_mock.post("/v1/ingest/document").mock(side_effect=retry_handler)
 
-        response = client.ingest.document.with_raw_response.process(file=b"raw file contents")
+        response = client.ingest.document.with_raw_response.process(
+            file=b"raw file contents", extra_headers={"x-stainless-retry-count": Omit()}
+        )
 
-        assert response.retries_taken == failures_before_success
+        assert len(response.http_request.headers.get_list("x-stainless-retry-count")) == 0
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("saturn_sdk._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    def test_overwrite_retry_count_header(
+        self, client: SaturnSDK, failures_before_success: int, respx_mock: MockRouter
+    ) -> None:
+        client = client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/v1/ingest/document").mock(side_effect=retry_handler)
+
+        response = client.ingest.document.with_raw_response.process(
+            file=b"raw file contents", extra_headers={"x-stainless-retry-count": "42"}
+        )
+
+        assert response.http_request.headers.get("x-stainless-retry-count") == "42"
 
 
 class TestAsyncSaturnSDK:
@@ -1322,6 +1385,7 @@ class TestAsyncSaturnSDK:
             [3, "", 0.5],
             [2, "", 0.5 * 2.0],
             [1, "", 0.5 * 4.0],
+            [-1100, "", 8],  # test large number potentially overflowing
         ],
     )
     @mock.patch("time.time", mock.MagicMock(return_value=1696004797))
@@ -1368,7 +1432,39 @@ class TestAsyncSaturnSDK:
     @mock.patch("saturn_sdk._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
     @pytest.mark.respx(base_url=base_url)
     @pytest.mark.asyncio
+    @pytest.mark.parametrize("failure_mode", ["status", "exception"])
     async def test_retries_taken(
+        self,
+        async_client: AsyncSaturnSDK,
+        failures_before_success: int,
+        failure_mode: Literal["status", "exception"],
+        respx_mock: MockRouter,
+    ) -> None:
+        client = async_client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                if failure_mode == "exception":
+                    raise RuntimeError("oops")
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/v1/ingest/document").mock(side_effect=retry_handler)
+
+        response = await client.ingest.document.with_raw_response.process(file=b"raw file contents")
+
+        assert response.retries_taken == failures_before_success
+        assert int(response.http_request.headers.get("x-stainless-retry-count")) == failures_before_success
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("saturn_sdk._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    @pytest.mark.asyncio
+    async def test_omit_retry_count_header(
         self, async_client: AsyncSaturnSDK, failures_before_success: int, respx_mock: MockRouter
     ) -> None:
         client = async_client.with_options(max_retries=4)
@@ -1384,6 +1480,34 @@ class TestAsyncSaturnSDK:
 
         respx_mock.post("/v1/ingest/document").mock(side_effect=retry_handler)
 
-        response = await client.ingest.document.with_raw_response.process(file=b"raw file contents")
+        response = await client.ingest.document.with_raw_response.process(
+            file=b"raw file contents", extra_headers={"x-stainless-retry-count": Omit()}
+        )
 
-        assert response.retries_taken == failures_before_success
+        assert len(response.http_request.headers.get_list("x-stainless-retry-count")) == 0
+
+    @pytest.mark.parametrize("failures_before_success", [0, 2, 4])
+    @mock.patch("saturn_sdk._base_client.BaseClient._calculate_retry_timeout", _low_retry_timeout)
+    @pytest.mark.respx(base_url=base_url)
+    @pytest.mark.asyncio
+    async def test_overwrite_retry_count_header(
+        self, async_client: AsyncSaturnSDK, failures_before_success: int, respx_mock: MockRouter
+    ) -> None:
+        client = async_client.with_options(max_retries=4)
+
+        nb_retries = 0
+
+        def retry_handler(_request: httpx.Request) -> httpx.Response:
+            nonlocal nb_retries
+            if nb_retries < failures_before_success:
+                nb_retries += 1
+                return httpx.Response(500)
+            return httpx.Response(200)
+
+        respx_mock.post("/v1/ingest/document").mock(side_effect=retry_handler)
+
+        response = await client.ingest.document.with_raw_response.process(
+            file=b"raw file contents", extra_headers={"x-stainless-retry-count": "42"}
+        )
+
+        assert response.http_request.headers.get("x-stainless-retry-count") == "42"
