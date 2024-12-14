@@ -8,7 +8,7 @@ from typing_extensions import Self, override
 
 import httpx
 
-from . import resources, _exceptions
+from . import _exceptions
 from ._qs import Querystring
 from ._types import (
     NOT_GIVEN,
@@ -31,13 +31,13 @@ from ._base_client import (
     SyncAPIClient,
     AsyncAPIClient,
 )
+from .resources.ingest import ingest
 
 __all__ = [
     "Timeout",
     "Transport",
     "ProxiesTypes",
     "RequestOptions",
-    "resources",
     "SaturnSDK",
     "AsyncSaturnSDK",
     "Client",
@@ -46,7 +46,7 @@ __all__ = [
 
 
 class SaturnSDK(SyncAPIClient):
-    ingest: resources.IngestResource
+    ingest: ingest.IngestResource
     with_raw_response: SaturnSDKWithRawResponse
     with_streaming_response: SaturnSDKWithStreamedResponse
 
@@ -91,7 +91,7 @@ class SaturnSDK(SyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.ingest = resources.IngestResource(self)
+        self.ingest = ingest.IngestResource(self)
         self.with_raw_response = SaturnSDKWithRawResponse(self)
         self.with_streaming_response = SaturnSDKWithStreamedResponse(self)
 
@@ -193,7 +193,7 @@ class SaturnSDK(SyncAPIClient):
 
 
 class AsyncSaturnSDK(AsyncAPIClient):
-    ingest: resources.AsyncIngestResource
+    ingest: ingest.AsyncIngestResource
     with_raw_response: AsyncSaturnSDKWithRawResponse
     with_streaming_response: AsyncSaturnSDKWithStreamedResponse
 
@@ -238,7 +238,7 @@ class AsyncSaturnSDK(AsyncAPIClient):
             _strict_response_validation=_strict_response_validation,
         )
 
-        self.ingest = resources.AsyncIngestResource(self)
+        self.ingest = ingest.AsyncIngestResource(self)
         self.with_raw_response = AsyncSaturnSDKWithRawResponse(self)
         self.with_streaming_response = AsyncSaturnSDKWithStreamedResponse(self)
 
@@ -341,22 +341,22 @@ class AsyncSaturnSDK(AsyncAPIClient):
 
 class SaturnSDKWithRawResponse:
     def __init__(self, client: SaturnSDK) -> None:
-        self.ingest = resources.IngestResourceWithRawResponse(client.ingest)
+        self.ingest = ingest.IngestResourceWithRawResponse(client.ingest)
 
 
 class AsyncSaturnSDKWithRawResponse:
     def __init__(self, client: AsyncSaturnSDK) -> None:
-        self.ingest = resources.AsyncIngestResourceWithRawResponse(client.ingest)
+        self.ingest = ingest.AsyncIngestResourceWithRawResponse(client.ingest)
 
 
 class SaturnSDKWithStreamedResponse:
     def __init__(self, client: SaturnSDK) -> None:
-        self.ingest = resources.IngestResourceWithStreamingResponse(client.ingest)
+        self.ingest = ingest.IngestResourceWithStreamingResponse(client.ingest)
 
 
 class AsyncSaturnSDKWithStreamedResponse:
     def __init__(self, client: AsyncSaturnSDK) -> None:
-        self.ingest = resources.AsyncIngestResourceWithStreamingResponse(client.ingest)
+        self.ingest = ingest.AsyncIngestResourceWithStreamingResponse(client.ingest)
 
 
 Client = SaturnSDK
