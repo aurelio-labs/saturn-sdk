@@ -29,10 +29,21 @@ __all__ = ["URLResource", "AsyncURLResource"]
 class URLResource(SyncAPIResource):
     @cached_property
     def with_raw_response(self) -> URLResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/aurelio-labs/saturn-sdk#accessing-raw-response-data-eg-headers
+        """
         return URLResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> URLResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/aurelio-labs/saturn-sdk#with_streaming_response
+        """
         return URLResourceWithStreamingResponse(self)
 
     def process(
@@ -85,10 +96,21 @@ class URLResource(SyncAPIResource):
 class AsyncURLResource(AsyncAPIResource):
     @cached_property
     def with_raw_response(self) -> AsyncURLResourceWithRawResponse:
+        """
+        This property can be used as a prefix for any HTTP method call to return
+        the raw response object instead of the parsed content.
+
+        For more information, see https://www.github.com/aurelio-labs/saturn-sdk#accessing-raw-response-data-eg-headers
+        """
         return AsyncURLResourceWithRawResponse(self)
 
     @cached_property
     def with_streaming_response(self) -> AsyncURLResourceWithStreamingResponse:
+        """
+        An alternative to `.with_raw_response` that doesn't eagerly read the response body.
+
+        For more information, see https://www.github.com/aurelio-labs/saturn-sdk#with_streaming_response
+        """
         return AsyncURLResourceWithStreamingResponse(self)
 
     async def process(
