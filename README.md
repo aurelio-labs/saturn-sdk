@@ -16,7 +16,7 @@ The REST API documentation can be found on [docs.saturn-sdk.com](https://docs.sa
 
 ```sh
 # install from PyPI
-pip install --pre saturn_sdk
+pip install saturn_sdk
 ```
 
 ## Usage
